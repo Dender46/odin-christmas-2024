@@ -1,4 +1,4 @@
-package graphs
+package christmas2024
 
 import "core:math"
 import "core:fmt"
@@ -74,7 +74,7 @@ debug_padding :: proc() {
     debugTextYOffset += 10
 }
 
-DEBUG_TEXT_FONT_SIZE  :: 40
+DEBUG_TEXT_FONT_SIZE  :: 30
 DEBUG_TEXT_FONT_COLOR :: rl.GREEN
 
 debug_text :: proc(args: ..any) {

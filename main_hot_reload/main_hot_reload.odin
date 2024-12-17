@@ -1,4 +1,4 @@
-package graphs_hot_reload
+package christmas2024_hot_reload
 
 import "core:os"
 import "core:dynlib"
@@ -127,7 +127,8 @@ unload_game_api :: proc(gameApi: GameAPI) {
 }
 
 // Make game use good GPU on laptops.
-@(export)
-NvOptimusEnablement: u32 = 1
-@(export)
-AmdPowerXpressRequestHighPerformance: i32 = 1
+
+// @(export)
+// NvOptimusEnablement: u32 = 1
+// @(export)
+// AmdPowerXpressRequestHighPerformance: i32 = 1

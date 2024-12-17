@@ -1,4 +1,4 @@
-package graphs
+package christmas2024
 
 import "core:os"
 import "core:bufio"
@@ -11,6 +11,8 @@ import "core:math/rand"
 import rl "vendor:raylib"
 import win "core:sys/windows"
 
+import bin "resources"
+
 EMPTY_POS                   :: [2]f32{0, 0}
 PERLIN_IMAGE_SCALE          :: 10
 WINDOW_PADDING              :: 10
@@ -18,9 +20,9 @@ WINDOW_PADDING              :: 10
 P_GRAV_SPEED                :: 100
 P_WIND_SPEED                :: 0.5
 
-P_RADIUS_SCALE              :: 0.4
+P_RADIUS_SCALE              :: 0.3
 P_RADIUS_MAX                :: 20
-P_COLOR_ALPHA_SCALE         :: 0.5
+P_COLOR_ALPHA_SCALE         :: 0.8
 
 // Variables that don't change, and that should be updated on hot reloaded
 // Be careful
@@ -38,7 +40,7 @@ update_statics :: proc() {
 game_init :: proc() {
     ctx = new(Context)
     ctx.window = Window{
-        name = "Raylib Graphs",
+        name = "christmas 2024 Gift",
         posX = 0,
         posY = 0,
         width = 1920,
@@ -47,7 +49,7 @@ game_init :: proc() {
         configFlags = {
             .MSAA_4X_HINT,
             .WINDOW_UNDECORATED,
-            // .WINDOW_TOPMOST,
+            .WINDOW_TOPMOST,
             .WINDOW_MOUSE_PASSTHROUGH,
             .WINDOW_TRANSPARENT,
         }
@@ -55,12 +57,21 @@ game_init :: proc() {
 
     rl.SetConfigFlags(ctx.window.configFlags)
     rl.InitWindow(ctx.window.width, ctx.window.height, ctx.window.name)
+    rl.SetWindowState(ctx.window.configFlags)
+    iconImg := rl.Image {
+        data = rawptr(&bin.ICON_DATA),
+        width = bin.ICON_WIDTH,
+        height = bin.ICON_HEIGHT,
+        mipmaps = 1,
+        format = rl.PixelFormat(bin.ICON_FORMAT)
+    }
+    rl.SetWindowIcon(iconImg)
     rl.SetTargetFPS(ctx.window.fps)
 
     // Mouse passthrough, but only when pointed pixel alpha == 0
     // winH := win.HWND(rl.GetWindowHandle())
     // curStyle := win.UINT(win.GetWindowLongW(winH, win.GWL_EXSTYLE))
-    // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_LAYERED))
+    // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_TRANSPARENT | win.WS_EX_LAYERED))
     // win.SetLayeredWindowAttributes(winH, win.RGB(0, 0, 0), 0, 1)
 
     window_resize()
@@ -73,7 +84,9 @@ game_update :: proc() -> bool {
     // update window size values outside of update_statics() to avoid issues
     ctx.window.width = rl.GetScreenWidth()
     ctx.window.height = rl.GetScreenHeight()
+
     dt := rl.GetFrameTime()
+    windowRect := rl.Rectangle{0, 0, f32(ctx.window.width), f32(ctx.window.height)}
 
     // ========================================
     // Raylib begin drawing
@@ -88,7 +101,7 @@ game_update :: proc() -> bool {
     if ctx.newSnowParticleTimer <= 0 {
         one = true
         create_new_snowparticle()
-        ctx.newSnowParticleTimer = rand.float32_range(0.1, 0.3)
+        ctx.newSnowParticleTimer = rand.float32_range(0.05, 0.2)
     }
 
     particlesOnTheScreen := 0
@@ -101,21 +114,52 @@ game_update :: proc() -> bool {
         windForce := color * P_WIND_SPEED * dt
         p.pos.x += windForce
 
-        gForce := (color * 0.008) + p.radius / P_RADIUS_MAX
+        gForce := (color * 0.001) + p.radius / P_RADIUS_MAX
         p.pos.y += gForce * P_GRAV_SPEED * dt
 
-        windowRect := rl.Rectangle{0, 0, f32(ctx.window.width), f32(ctx.window.height)}
         if !rl.CheckCollisionPointRec(p.pos, windowRect) {
             p.pos = EMPTY_POS
             continue
         }
 
+        // rl.DrawRectangle(i32(dstRec.x), i32(dstRec.y), i32(dstRec.width), i32(dstRec.height), rl.RED)
+        if p.isDot {
+            rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
+        } else {
+            p.rot += p.radius / P_RADIUS_MAX * 80 * dt
+
+            tex := &ctx.textures[p.texIndex]
+            srcRec := rl.Rectangle{ 0, 0, f32(tex.width), f32(tex.height) }
+            
+            texW := f32(tex.width) * (p.radius * 0.03)
+            texH := f32(tex.height) * (p.radius * 0.03)
+            dstRec := rl.Rectangle{ p.pos.x, p.pos.y, texW / 2, texH / 2}
+            origin := rl.Vector2{ texW / 4, texH / 4 }
+            rl.DrawTexturePro(tex^, srcRec, dstRec, origin, p.rot, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
+            // rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, 1))
+        }
+
         particlesOnTheScreen += 1
-        rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
     }
     debug_text("particlesOnTheScreen", particlesOnTheScreen)
 
-    // rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.7))
+
+    // Test out perlin noise values manually
+    if false
+    {
+        pos := rl.GetMousePosition()
+        rl.DrawCircle(i32(pos.x), i32(pos.y), 3, rl.GREEN)
+        color := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(pos.x) / PERLIN_IMAGE_SCALE, i32(pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
+        windForce := color * P_WIND_SPEED
+        // pos.x += windForce
+
+        gForce := (color * 0.001) + (P_RADIUS_MAX*0.9) / P_RADIUS_MAX * P_GRAV_SPEED
+        // pos.y += gForce * P_GRAV_SPEED * dt
+
+        rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.3))
+        debug_text("windForce",windForce)
+        debug_text("gForce",gForce)
+    }
 
     {
         @(static) hotReloadTimer: f32 = 3
@@ -125,7 +169,7 @@ game_update :: proc() -> bool {
             hotReloadTimer = clamp(hotReloadTimer, 0, 3)
         }
     }
-    rl.DrawFPS(5, 5)
+    rl.DrawFPS(10, ctx.window.height/2)
     rl.EndDrawing()
 
     debug_reset_text_state()
@@ -144,10 +188,16 @@ create_new_snowparticle :: proc() {
         p.pos.y = 0
     
         p.radius = rand.float32_range(8, P_RADIUS_MAX)
-        p.color.r = u8(rand.float32_range(180, 255))
-        p.color.g = p.color.r
+        rg := u8(rand.float32_range(160, 255))
+        p.color.r = rg
+        p.color.g = rg
         p.color.b = 255
-        p.color.a = 255
+        p.color.a = u8(rand.float32_range(160, 255))
+
+        p.isDot = 0.3 < rand.float32_range(0, 1)
+        if p.isDot {
+            p.texIndex = u8(rand.float32_range(0, f32(len(ctx.textures))))
+        }
         break
     }
 }
@@ -159,6 +209,8 @@ game_memory :: proc() -> rawptr {
 
 @(export)
 game_shutdown :: proc() {
+    delete(ctx.textures)
+    delete(ctx.models)
     context_free_memory()
     free(ctx)
 }
@@ -181,7 +233,6 @@ context_free_memory :: proc() {
         for t in ctx.textures {
             rl.UnloadTexture(t)
         }
-        delete(ctx.textures)
     }
     rl.UnloadImage(ctx.perlinImg)
     rl.UnloadTexture(ctx.perlinTex)
@@ -190,6 +241,22 @@ context_free_memory :: proc() {
 context_init :: proc() {
     ctx.perlinImg = rl.GenImagePerlinNoise(ctx.window.width / PERLIN_IMAGE_SCALE, ctx.window.height / PERLIN_IMAGE_SCALE, 0, 0, 10.0)
     ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
+    img := rl.Image {
+        data = rawptr(&bin.SNOWFLAKE_A_DATA),
+        width = bin.SNOWFLAKE_A_WIDTH,
+        height = bin.SNOWFLAKE_A_HEIGHT,
+        mipmaps = 1,
+        format = rl.PixelFormat(bin.SNOWFLAKE_A_FORMAT),
+    }
+    append(&ctx.textures, rl.LoadTextureFromImage(img))
+    img.data = rawptr(&bin.SNOWFLAKE_B_DATA)
+    img.width = bin.SNOWFLAKE_B_WIDTH
+    img.height = bin.SNOWFLAKE_B_HEIGHT
+    append(&ctx.textures, rl.LoadTextureFromImage(img))
+    img.data = rawptr(&bin.SNOWFLAKE_C_DATA)
+    img.width = bin.SNOWFLAKE_C_WIDTH
+    img.height = bin.SNOWFLAKE_C_HEIGHT
+    append(&ctx.textures, rl.LoadTextureFromImage(img))
 }
 
 window_resize :: proc() {
@@ -200,8 +267,9 @@ window_resize :: proc() {
     rl.SetWindowPosition(ctx.window.posX, ctx.window.posY)
 }
 
-// make game use good GPU on laptops etc
-@(export)
-NvOptimusEnablement: u32 = 1
-@(export)
-AmdPowerXpressRequestHighPerformance: i32 = 1
+// Make game use good GPU on laptops.
+// This doesn't work with transparent buffer
+// @(export)
+// NvOptimusEnablement: u32 = 1
+// @(export)
+// AmdPowerXpressRequestHighPerformance: i32 = 1

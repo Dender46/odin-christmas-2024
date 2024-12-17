@@ -1,4 +1,4 @@
-package graphs
+package christmas2024
 
 import "core:time"
 

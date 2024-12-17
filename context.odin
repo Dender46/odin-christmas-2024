@@ -1,4 +1,4 @@
-package graphs
+package christmas2024
 
 import rl "vendor:raylib"
 
@@ -15,14 +15,18 @@ Window :: struct {
 SnowParticle :: struct {
     color           : rl.Color,
     pos             : rl.Vector2,
+    rot             : f32,
     radius          : f32,
+
+    isDot           : bool,
+    texIndex        : u8,
 }
 
 Context :: struct {
     window                  : Window,
     textures                : [dynamic]rl.Texture2D,
     models                  : [dynamic]rl.Model,
-    snowParticles           : [256]SnowParticle,
+    snowParticles           : [300]SnowParticle,
 
     newSnowParticleTimer    : f32,
 
