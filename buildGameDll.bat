@@ -1,0 +1,1 @@
+odin build . -build-mode:dll -out:game.dll -define:RAYLIB_SHARED=true

@@ -1,0 +1,13 @@
+.vscode
+
+game_*.dll
+game.dll
+game.exp
+game.lib
+raylib.dll
+
+*testing.txt
+*.exe
+*.pdb
+*.bin
+ols.json
