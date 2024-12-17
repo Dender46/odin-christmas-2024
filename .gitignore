@@ -1,15 +1,23 @@
+.DS_Store
 .vscode
 
+# windows
 game_*.dll
 game.dll
 game.exp
 game.lib
-raylib.dll
-
-*testing.txt
 *.exe
 *.pdb
 *.bin
+
+# macos
+game_*.dylib
+game.dylib
+*.app
+
+raylib.dll
+
+*testing.txt
 ols.json
 
 *.res

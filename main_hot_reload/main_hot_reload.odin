@@ -14,6 +14,22 @@ when ODIN_OS == .Windows {
     DLL_EXT :: ".so"
 }
 
+copy_dll :: proc(to: string) -> bool {
+    exit: i32
+    when ODIN_OS == .Windows {
+        exit = libc.system(fmt.ctprintf("copy game.dll {0}", to))
+    } else {
+        exit = libc.system(fmt.ctprintf("cp game" + DLL_EXT + " {0}", to))
+    }
+
+    if exit != 0 {
+        fmt.printfln("Failed to copy game" + DLL_EXT + " to {0}", to)
+        return false
+    }
+
+    return true
+}
+
 GameAPI :: struct {
     init: proc(),
     update: proc() -> bool,
@@ -92,12 +108,8 @@ main :: proc() {
 }
 
 load_game_api :: proc(newGameApiVersion: int) -> (api: GameAPI, ok: bool) {
-    dllName := fmt.tprintf("game_{0}"+DLL_EXT, newGameApiVersion)
-    copyCmd := fmt.ctprintf("copy game"+DLL_EXT+" {0}", dllName)
-    if libc.system(copyCmd) != 0 {
-        fmt.printfln("Failed to copy game"+DLL_EXT+" to {0}", dllName)
-        return
-    }
+    dllName := fmt.tprintf("{0}game_{1}" + DLL_EXT, "./" when ODIN_OS != .Windows else "", newGameApiVersion)
+    copy_dll(dllName)
 
     count, okT := dynlib.initialize_symbols(&api, dllName, "game_", "lib")
     ok = okT
