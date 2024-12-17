@@ -27,6 +27,7 @@ Context :: struct {
     newSnowParticleTimer    : f32,
 
     perlinTex               : rl.Texture2D,
+    perlinImg               : rl.Image,
 }
 
 ctx: ^Context

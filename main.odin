@@ -11,6 +11,17 @@ import "core:math/rand"
 import rl "vendor:raylib"
 import win "core:sys/windows"
 
+EMPTY_POS                   :: [2]f32{0, 0}
+PERLIN_IMAGE_SCALE          :: 10
+WINDOW_PADDING              :: 10
+
+P_GRAV_SPEED                :: 100
+P_WIND_SPEED                :: 0.5
+
+P_RADIUS_SCALE              :: 0.4
+P_RADIUS_MAX                :: 20
+P_COLOR_ALPHA_SCALE         :: 0.5
+
 // Variables that don't change, and that should be updated on hot reloaded
 // Be careful
 update_statics :: proc() {
@@ -31,12 +42,12 @@ game_init :: proc() {
         posX = 0,
         posY = 0,
         width = 1920,
-        height = 150,
+        height = 1080,
         fps = 60,
         configFlags = {
             .MSAA_4X_HINT,
             .WINDOW_UNDECORATED,
-            .WINDOW_TOPMOST,
+            // .WINDOW_TOPMOST,
             .WINDOW_MOUSE_PASSTHROUGH,
             .WINDOW_TRANSPARENT,
         }
@@ -52,11 +63,8 @@ game_init :: proc() {
     // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_LAYERED))
     // win.SetLayeredWindowAttributes(winH, win.RGB(0, 0, 0), 0, 1)
 
-    perlinImg := rl.GenImagePerlinNoise(500, 500, 0, 0, 1.0)
-    ctx.perlinTex = rl.LoadTextureFromImage(perlinImg)
-    rl.UnloadImage(perlinImg)
-
-    game_hot_reloaded(ctx)
+    window_resize()
+    context_init()
 }
 
 @(export)
@@ -65,37 +73,49 @@ game_update :: proc() -> bool {
     // update window size values outside of update_statics() to avoid issues
     ctx.window.width = rl.GetScreenWidth()
     ctx.window.height = rl.GetScreenHeight()
+    dt := rl.GetFrameTime()
 
     // ========================================
     // Raylib begin drawing
     // ========================================
     rl.BeginDrawing()
     rl.ClearBackground(rl.BLANK)
-    rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
+    // rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
 
-    ctx.newSnowParticleTimer -= rl.GetFrameTime()
-    debug_text("New particle in: ", ctx.newSnowParticleTimer)
+    ctx.newSnowParticleTimer -= dt
+    // debug_text("New particle in: ", ctx.newSnowParticleTimer)
+    @(static) one := false
     if ctx.newSnowParticleTimer <= 0 {
+        one = true
         create_new_snowparticle()
-        ctx.newSnowParticleTimer = rand.float32_range(0.75, 1.5)
+        ctx.newSnowParticleTimer = rand.float32_range(0.1, 0.3)
     }
 
-    EMPTY_POS :: [2]f32{0, 0}
-    P_RADIUS_SCALE :: 0.6
-
+    particlesOnTheScreen := 0
     for &p, idx in ctx.snowParticles {
         if p.pos == EMPTY_POS {
             continue
         }
-        p.pos.y += 100 * rl.GetFrameTime()
-        if p.pos.y > f32(ctx.window.height)+20 {
+
+        color := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(p.pos.x) / PERLIN_IMAGE_SCALE, i32(p.pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
+        windForce := color * P_WIND_SPEED * dt
+        p.pos.x += windForce
+
+        gForce := (color * 0.008) + p.radius / P_RADIUS_MAX
+        p.pos.y += gForce * P_GRAV_SPEED * dt
+
+        windowRect := rl.Rectangle{0, 0, f32(ctx.window.width), f32(ctx.window.height)}
+        if !rl.CheckCollisionPointRec(p.pos, windowRect) {
             p.pos = EMPTY_POS
+            continue
         }
 
-        // rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, p.color)
+        particlesOnTheScreen += 1
+        rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
     }
+    debug_text("particlesOnTheScreen", particlesOnTheScreen)
 
-    // rl.DrawTexture(ctx.perlinTex, 0, 0, rl.WHITE)
+    // rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.7))
 
     {
         @(static) hotReloadTimer: f32 = 3
@@ -115,20 +135,19 @@ game_update :: proc() -> bool {
 }
 
 create_new_snowparticle :: proc() {
-    EMPTY_POS :: [2]f32{0, 0}
     for &p in ctx.snowParticles {
         if p.pos != EMPTY_POS {
             continue
         }
 
-        p.pos.x = rand.float32_range(10, f32(ctx.window.width)+10)
+        p.pos.x = rand.float32_range(0, f32(ctx.window.width))
         p.pos.y = 0
     
-        p.radius = rand.float32_range(10, 20)
-        p.color.r = 255
-        p.color.g = 255
+        p.radius = rand.float32_range(8, P_RADIUS_MAX)
+        p.color.r = u8(rand.float32_range(180, 255))
+        p.color.g = p.color.r
         p.color.b = 255
-        p.color.a = 50
+        p.color.a = 255
         break
     }
 }
@@ -140,7 +159,7 @@ game_memory :: proc() -> rawptr {
 
 @(export)
 game_shutdown :: proc() {
-    free_memory()
+    context_free_memory()
     free(ctx)
 }
 
@@ -151,25 +170,34 @@ game_hot_reloaded :: proc(memFromOldApi: ^Context) {
     ctx = memFromOldApi
     update_statics()
 
-    // rl.SetWindowPosition(ctx.window.posX, ctx.window.posY)
-    // currMonitor := rl.GetCurrentMonitor()
-    // rl.SetWindowSize(rl.GetMonitorWidth(currMonitor), rl.GetMonitorHeight(currMonitor))
+    window_resize()
 
-    perlinImg := rl.GenImagePerlinNoise(500, 500, 0, 0, 4)
-    ctx.perlinTex = rl.LoadTextureFromImage(perlinImg)
-    rl.UnloadImage(perlinImg)
-
-    free_memory()
-    // TODO: resetup memory?
+    context_free_memory()
+    context_init()
 }
 
-free_memory :: proc() {
+context_free_memory :: proc() {
     if cap(ctx.textures) != 0 {
         for t in ctx.textures {
             rl.UnloadTexture(t)
         }
         delete(ctx.textures)
     }
+    rl.UnloadImage(ctx.perlinImg)
+    rl.UnloadTexture(ctx.perlinTex)
+}
+
+context_init :: proc() {
+    ctx.perlinImg = rl.GenImagePerlinNoise(ctx.window.width / PERLIN_IMAGE_SCALE, ctx.window.height / PERLIN_IMAGE_SCALE, 0, 0, 10.0)
+    ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
+}
+
+window_resize :: proc() {
+    currMonitor := rl.GetCurrentMonitor()
+    ctx.window.width = rl.GetMonitorWidth(currMonitor)
+    ctx.window.height = rl.GetMonitorHeight(currMonitor)
+    rl.SetWindowSize(ctx.window.width, ctx.window.height)
+    rl.SetWindowPosition(ctx.window.posX, ctx.window.posY)
 }
 
 // make game use good GPU on laptops etc

@@ -74,8 +74,8 @@ debug_padding :: proc() {
     debugTextYOffset += 10
 }
 
-DEBUG_TEXT_FONT_SIZE  :: 20
-DEBUG_TEXT_FONT_COLOR :: rl.WHITE
+DEBUG_TEXT_FONT_SIZE  :: 40
+DEBUG_TEXT_FONT_COLOR :: rl.GREEN
 
 debug_text :: proc(args: ..any) {
     rl.DrawText(fmt.ctprint(..args), 3, debugTextYOffset, DEBUG_TEXT_FONT_SIZE, DEBUG_TEXT_FONT_COLOR)
