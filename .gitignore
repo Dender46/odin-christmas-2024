@@ -11,3 +11,5 @@ raylib.dll
 *.pdb
 *.bin
 ols.json
+
+*.res

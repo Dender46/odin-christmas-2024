@@ -40,7 +40,7 @@ update_statics :: proc() {
 game_init :: proc() {
     ctx = new(Context)
     ctx.window = Window{
-        name = "christmas 2024 Gift",
+        name = "Christmas 2024 Gift",
         posX = 0,
         posY = 0,
         width = 1920,
@@ -88,12 +88,10 @@ game_update :: proc() -> bool {
     dt := rl.GetFrameTime()
     windowRect := rl.Rectangle{0, 0, f32(ctx.window.width), f32(ctx.window.height)}
 
-    // ========================================
-    // Raylib begin drawing
-    // ========================================
-    rl.BeginDrawing()
-    rl.ClearBackground(rl.BLANK)
-    // rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
+    // rl.UnloadImage(ctx.perlinImg)
+    // ctx.perlinImg = rl.GenImagePerlinNoise(ctx.window.width / PERLIN_IMAGE_SCALE, ctx.window.height / PERLIN_IMAGE_SCALE, i32(rl.GetTime()*5), 0, 10.0)
+    // rl.UnloadTexture(ctx.perlinTex)
+    // ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
 
     ctx.newSnowParticleTimer -= dt
     // debug_text("New particle in: ", ctx.newSnowParticleTimer)
@@ -103,6 +101,13 @@ game_update :: proc() -> bool {
         create_new_snowparticle()
         ctx.newSnowParticleTimer = rand.float32_range(0.05, 0.2)
     }
+
+    // ========================================
+    // Raylib begin drawing
+    // ========================================
+    rl.BeginDrawing()
+    rl.ClearBackground(rl.BLANK)
+    // rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
 
     particlesOnTheScreen := 0
     for &p, idx in ctx.snowParticles {
@@ -156,7 +161,7 @@ game_update :: proc() -> bool {
         gForce := (color * 0.001) + (P_RADIUS_MAX*0.9) / P_RADIUS_MAX * P_GRAV_SPEED
         // pos.y += gForce * P_GRAV_SPEED * dt
 
-        rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.3))
+        rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.5))
         debug_text("windForce",windForce)
         debug_text("gForce",gForce)
     }
