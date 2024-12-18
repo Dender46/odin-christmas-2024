@@ -13,6 +13,8 @@ import win "core:sys/windows"
 
 import bin "resources"
 
+IS_RELEASE :: #config(IS_RELEASE, false)
+
 EMPTY_POS                   :: [2]f32{0, 0}
 PERLIN_IMAGE_SCALE          :: 10
 WINDOW_PADDING              :: 10
@@ -33,6 +35,16 @@ update_statics :: proc() {
         // rl.SetWindowPosition(screenArea.right-ctx.window.width, screenArea.bottom-ctx.window.height)
     } else {
         // rl.SetWindowPosition(0, rl.GetMonitorHeight(rl.GetCurrentMonitor())-ctx.window.height)
+    }
+}
+
+when IS_RELEASE {
+    main :: proc() {
+        game_init()
+        for game_update() {
+            continue
+        }
+        game_shutdown()
     }
 }
 
@@ -146,35 +158,33 @@ game_update :: proc() -> bool {
 
         particlesOnTheScreen += 1
     }
-    debug_text("particlesOnTheScreen", particlesOnTheScreen)
+    when !IS_RELEASE {
+        debug_text("particlesOnTheScreen", particlesOnTheScreen)
+        // Test out perlin noise values manually
+        if false
+        {
+            pos := rl.GetMousePosition()
+            rl.DrawCircle(i32(pos.x), i32(pos.y), 3, rl.GREEN)
+            color := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(pos.x) / PERLIN_IMAGE_SCALE, i32(pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
+            windForce := color * P_WIND_SPEED
+            // pos.x += windForce
 
+            gForce := (color * 0.001) + (P_RADIUS_MAX*0.9) / P_RADIUS_MAX * P_GRAV_SPEED
+            // pos.y += gForce * P_GRAV_SPEED * dt
 
-    // Test out perlin noise values manually
-    if false
-    {
-        pos := rl.GetMousePosition()
-        rl.DrawCircle(i32(pos.x), i32(pos.y), 3, rl.GREEN)
-        color := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(pos.x) / PERLIN_IMAGE_SCALE, i32(pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
-        windForce := color * P_WIND_SPEED
-        // pos.x += windForce
+            rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.5))
+            debug_text("windForce",windForce)
+            debug_text("gForce",gForce)
+        }
 
-        gForce := (color * 0.001) + (P_RADIUS_MAX*0.9) / P_RADIUS_MAX * P_GRAV_SPEED
-        // pos.y += gForce * P_GRAV_SPEED * dt
-
-        rl.DrawTextureEx(ctx.perlinTex, 0, 0, PERLIN_IMAGE_SCALE, rl.ColorAlpha(rl.WHITE, 0.5))
-        debug_text("windForce",windForce)
-        debug_text("gForce",gForce)
-    }
-
-    {
         @(static) hotReloadTimer: f32 = 3
         if hotReloadTimer >= 0 {
             draw_centered_text("RELOADED", ctx.window.width/2, ctx.window.height/2, 0, 60, rl.ColorAlpha(rl.RED, hotReloadTimer))
             hotReloadTimer -= rl.GetFrameTime()
             hotReloadTimer = clamp(hotReloadTimer, 0, 3)
         }
+        rl.DrawFPS(10, ctx.window.height/2)
     }
-    rl.DrawFPS(10, ctx.window.height/2)
     rl.EndDrawing()
 
     debug_reset_text_state()
