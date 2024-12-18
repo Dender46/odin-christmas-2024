@@ -15,14 +15,15 @@ import bin "resources"
 
 IS_RELEASE :: #config(IS_RELEASE, false)
 
-EMPTY_POS                   :: [2]f32{0, 0}
+EMPTY_POS                   :: [2]f32{-999, -999}
 PERLIN_IMAGE_SCALE          :: 10
 WINDOW_PADDING              :: 10
 
 P_GRAV_SPEED                :: 100
 P_WIND_SPEED                :: 0.5
 
-P_RADIUS_SCALE              :: 0.3
+P_RADIUS_SCALE              :: 0.25
+P_TEXTURES_SCALE            :: 0.025
 P_RADIUS_MAX                :: 20
 P_COLOR_ALPHA_SCALE         :: 0.8
 
@@ -83,8 +84,13 @@ game_init :: proc() {
     // Mouse passthrough, but only when pointed pixel alpha == 0
     // winH := win.HWND(rl.GetWindowHandle())
     // curStyle := win.UINT(win.GetWindowLongW(winH, win.GWL_EXSTYLE))
-    // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_TRANSPARENT | win.WS_EX_LAYERED))
+    // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_LAYERED))
     // win.SetLayeredWindowAttributes(winH, win.RGB(0, 0, 0), 0, 1)
+
+    // Just in case preinit particles to -999, -999
+    for &p, _ in ctx.snowParticles {
+        p.pos = EMPTY_POS
+    }
 
     window_resize()
     context_init()
@@ -121,17 +127,22 @@ game_update :: proc() -> bool {
     rl.ClearBackground(rl.BLANK)
     // rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
 
+    mousePos: win.LPPOINT 
+    win.GetCursorPos(mousePos)
+    debug_text(mousePos)
+    debug_text(rl.GetMousePosition())
+
     particlesOnTheScreen := 0
     for &p, idx in ctx.snowParticles {
         if p.pos == EMPTY_POS {
             continue
         }
 
-        color := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(p.pos.x) / PERLIN_IMAGE_SCALE, i32(p.pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
-        windForce := color * P_WIND_SPEED * dt
+        perlinColor := f32(i8(rl.GetImageColor(ctx.perlinImg, i32(p.pos.x) / PERLIN_IMAGE_SCALE, i32(p.pos.y) / PERLIN_IMAGE_SCALE).x) - 127)
+        windForce := perlinColor * P_WIND_SPEED * dt
         p.pos.x += windForce
-
-        gForce := (color * 0.001) + p.radius / P_RADIUS_MAX
+        
+        gForce := (perlinColor * 0.001) + p.radius / P_RADIUS_MAX
         p.pos.y += gForce * P_GRAV_SPEED * dt
 
         if !rl.CheckCollisionPointRec(p.pos, windowRect) {
@@ -139,20 +150,22 @@ game_update :: proc() -> bool {
             continue
         }
 
-        // rl.DrawRectangle(i32(dstRec.x), i32(dstRec.y), i32(dstRec.width), i32(dstRec.height), rl.RED)
+        renderColor := p.color
+        renderColor.a = u8(f32(renderColor.a) * P_COLOR_ALPHA_SCALE)
         if p.isDot {
-            rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
+            rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, renderColor)
         } else {
-            p.rot += p.radius / P_RADIUS_MAX * 80 * dt
+            p.rot += p.radius / P_RADIUS_MAX * 70 * dt
+            rot := math.sin(p.rot * 0.01) * (math.PI * 0.9) * math.DEG_PER_RAD
 
             tex := &ctx.textures[p.texIndex]
             srcRec := rl.Rectangle{ 0, 0, f32(tex.width), f32(tex.height) }
             
-            texW := f32(tex.width) * (p.radius * 0.03)
-            texH := f32(tex.height) * (p.radius * 0.03)
+            texW := f32(tex.width) * (p.radius * P_TEXTURES_SCALE)
+            texH := f32(tex.height) * (p.radius * P_TEXTURES_SCALE)
             dstRec := rl.Rectangle{ p.pos.x, p.pos.y, texW / 2, texH / 2}
             origin := rl.Vector2{ texW / 4, texH / 4 }
-            rl.DrawTexturePro(tex^, srcRec, dstRec, origin, p.rot, rl.ColorAlpha(p.color, P_COLOR_ALPHA_SCALE))
+            rl.DrawTexturePro(tex^, srcRec, dstRec, origin, rot, renderColor)
             // rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, rl.ColorAlpha(p.color, 1))
         }
 
@@ -203,11 +216,11 @@ create_new_snowparticle :: proc() {
         p.pos.y = 0
     
         p.radius = rand.float32_range(8, P_RADIUS_MAX)
-        rg := u8(rand.float32_range(160, 255))
+        rg := u8(rand.float32_range(170, 255))
         p.color.r = rg
         p.color.g = rg
         p.color.b = 255
-        p.color.a = u8(rand.float32_range(160, 255))
+        p.color.a = u8(rand.float32_range(100, 255))
 
         p.isDot = 0.3 < rand.float32_range(0, 1)
         if p.isDot {
