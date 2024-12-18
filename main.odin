@@ -127,11 +127,6 @@ game_update :: proc() -> bool {
     rl.ClearBackground(rl.BLANK)
     // rl.DrawRectangleLinesEx({ 0, 0, f32(ctx.window.width), f32(ctx.window.height) }, 1, rl.GRAY)
 
-    mousePos: win.LPPOINT 
-    win.GetCursorPos(mousePos)
-    debug_text(mousePos)
-    debug_text(rl.GetMousePosition())
-
     particlesOnTheScreen := 0
     for &p, idx in ctx.snowParticles {
         if p.pos == EMPTY_POS {
@@ -150,8 +145,12 @@ game_update :: proc() -> bool {
             continue
         }
 
+
         renderColor := p.color
-        renderColor.a = u8(f32(renderColor.a) * P_COLOR_ALPHA_SCALE)
+        // smoothstep for some nice fade out at the end
+        smoothstepOfPosY := 1 - math.smoothstep(f32(0.75), f32(1.05), p.pos.y / f32(ctx.window.height))
+        renderColor.a = u8(f32(renderColor.a) * smoothstepOfPosY * P_COLOR_ALPHA_SCALE)
+
         if p.isDot {
             rl.DrawCircle(i32(p.pos.x), i32(p.pos.y), p.radius * P_RADIUS_SCALE, renderColor)
         } else {
