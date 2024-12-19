@@ -42,7 +42,7 @@ P_SPAWN_FREQUENCY: f32 = 1.0
 // Be careful
 update_statics :: proc() {
     bin.GuiLoadStyleBluish()
-    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SIZE), 30)
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SIZE), 32)
     rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SPACING), 2)
     when ODIN_OS == .Windows {
         // screenArea: win.RECT
@@ -183,16 +183,24 @@ game_update :: proc() -> bool {
         particlesOnTheScreen += 1
     }
 
-    closeWindow: bool
-    if rl.IsWindowFocused() {
-        set_mouse_passthrough(false)
-        // TODO: figure out disfocus. Maybe enable mouse passthrough, and after 5 sec disable it
-        disfocusApp, quitApp := render_ui()
-        closeWindow = quitApp
-    } else {
-        set_mouse_passthrough(true)
+    debug_text(ctx.window.mousePassthroughCtrl)
+    debug_text(ctx.window.mousePassthroughTimer)
+    ctx.window.mousePassthroughTimer -= dt
+    if ctx.window.mousePassthroughTimer < 0 { 
+        ctx.window.mousePassthroughCtrl = !rl.IsWindowFocused()
+        ctx.window.mousePassthroughTimer = -1
     }
 
+    closeWindow: bool
+    if !ctx.window.mousePassthroughCtrl {
+        set_mouse_passthrough(false)
+        disfocusApp, quitApp := render_ui()
+        if disfocusApp {
+            ctx.window.mousePassthroughCtrl = true
+            ctx.window.mousePassthroughTimer = 5
+        }
+        closeWindow = quitApp
+    }
 
     when !IS_RELEASE {
         debug_text("particlesOnTheScreen", particlesOnTheScreen)
@@ -223,6 +231,8 @@ game_update :: proc() -> bool {
     }
     rl.EndDrawing()
 
+    set_mouse_passthrough(ctx.window.mousePassthroughCtrl)
+    debug_text(rl.IsWindowState({.WINDOW_MOUSE_PASSTHROUGH}))
     debug_reset_text_state()
     free_all(context.temp_allocator)
 
@@ -258,7 +268,7 @@ render_ui :: proc() -> (disfocusApp, quitApp: bool) {
     // Gui controls
     //   [   ] fps
     //    [x]  fade at the bottom
-    container := rl.Rectangle{0, 0, 500, 430}
+    container := rl.Rectangle{0, 0, 500, 495}
     container.x = (f32(ctx.window.width) - container.width) * 0.5
     container.y = (f32(ctx.window.height) - container.height) * 0.5
 
@@ -270,11 +280,20 @@ render_ui :: proc() -> (disfocusApp, quitApp: bool) {
         rl.DrawRectangleRoundedLinesEx(container, 0.02, 6, 12, rl.GetColor(0x5ca6a6ff))
     }
 
-    pad: f32 = 30
+    pad: f32 = 25
     elHeight: f32 = 30
     x := container.x + pad
     y := container.y + pad
     elWidth := container.width / 2 - pad
+    when !IS_RELEASE {
+        debug_text(rl.MeasureTextEx(rl.GuiGetFont(), "Happy holidays! :)", 30, 2))
+    }
+    {
+        titleSize := rl.Vector2{240.25, 30}
+        titleX := container.x + (container.width - titleSize.x) / 2
+        rl.DrawTextEx(rl.GuiGetFont(), "Happy holidays! :)", {titleX, y}, 30, 2, rl.GetColor(0x447e77ff))
+        y += elHeight + pad
+    }
     rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Falling speed", &P_GRAV_SPEED, 30, 300)
     y += elHeight + pad
     rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Pattern speed", &P_WIND_SPEED, 0.0, 0.5)
@@ -288,10 +307,23 @@ render_ui :: proc() -> (disfocusApp, quitApp: bool) {
     P_TEXTURES_SCALE = P_RADIUS_SCALE * 0.1
 
     y += elHeight + pad + 5
-    quitButton := rl.Rectangle{0, 0, elWidth, elHeight}
+    hideButton := rl.Rectangle{0, 0, elWidth, elHeight + 10}
+    hideButton.x = container.x + (container.width - hideButton.width) / 2
+    hideButton.y = y
+
+    disfocusApp = rl.GuiButton(hideButton, "Hide menu")
+
+    y += elHeight + pad + 5
+    quitButton := rl.Rectangle{0, 0, 100, elHeight}
     quitButton.x = container.x + (container.width - quitButton.width) / 2
     quitButton.y = y
-    quitApp = rl.GuiButton(quitButton, "Quit!")
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SIZE), 22)
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SPACING), 1)
+    quitApp = rl.GuiButton(quitButton, "Quit")
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SIZE), 32)
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SPACING), 2)
+
+
     return
 }
 

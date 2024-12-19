@@ -78,13 +78,17 @@ DEBUG_TEXT_FONT_SIZE  :: 30
 DEBUG_TEXT_FONT_COLOR :: rl.GREEN
 
 debug_text :: proc(args: ..any) {
-    rl.DrawText(fmt.ctprint(..args), 3, debugTextYOffset, DEBUG_TEXT_FONT_SIZE, DEBUG_TEXT_FONT_COLOR)
-    debugTextYOffset += DEBUG_TEXT_FONT_SIZE
+    when !IS_RELEASE {
+        rl.DrawText(fmt.ctprint(..args), 3, debugTextYOffset, DEBUG_TEXT_FONT_SIZE, DEBUG_TEXT_FONT_COLOR)
+        debugTextYOffset += DEBUG_TEXT_FONT_SIZE
+    }
 }
 
 debug_textf :: proc(f: string, args: ..any) {
-    rl.DrawText(fmt.ctprintf(f, ..args), 3, debugTextYOffset, DEBUG_TEXT_FONT_SIZE, DEBUG_TEXT_FONT_COLOR)
-    debugTextYOffset += DEBUG_TEXT_FONT_SIZE
+    when !IS_RELEASE {
+        rl.DrawText(fmt.ctprintf(f, ..args), 3, debugTextYOffset, DEBUG_TEXT_FONT_SIZE, DEBUG_TEXT_FONT_COLOR)
+        debugTextYOffset += DEBUG_TEXT_FONT_SIZE
+    }
 }
 
 // Sets guiControlExclusiveMode, guiControlExclusiveRec, so we can tell if element is being manipulated

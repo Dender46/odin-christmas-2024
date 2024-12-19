@@ -10,6 +10,9 @@ Window :: struct {
     height          : i32,
     fps             : i32,
     configFlags     : rl.ConfigFlags,
+
+    mousePassthroughCtrl    : bool,
+    mousePassthroughTimer   : f32,
 }
 
 SnowParticle :: struct {
