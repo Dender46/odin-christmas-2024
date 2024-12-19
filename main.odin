@@ -10,8 +10,18 @@ import "core:slice"
 import "core:math/rand"
 import rl "vendor:raylib"
 import win "core:sys/windows"
-
 import bin "resources"
+
+
+when ODIN_OS == .Windows {
+    foreign import user32 "system:User32.lib"
+
+    @(default_calling_convention="system")
+    foreign user32 {
+        // For some reason not implemented in Odin :(
+        GetLayeredWindowAttributes :: proc(hWnd: win.HWND, crKey: ^win.COLORREF, bAlpha: ^win.BYTE, pdwFlags: ^win.DWORD) -> win.BOOL ---
+    }
+}
 
 IS_RELEASE :: #config(IS_RELEASE, false)
 
@@ -25,7 +35,7 @@ P_WIND_SPEED                :: 0.5
 P_RADIUS_SCALE              :: 0.25
 P_TEXTURES_SCALE            :: 0.025
 P_RADIUS_MAX                :: 20
-P_COLOR_ALPHA_SCALE         :: 0.8
+P_COLOR_ALPHA_SCALE         :: 0.7
 
 // Variables that don't change, and that should be updated on hot reloaded
 // Be careful
@@ -86,6 +96,7 @@ game_init :: proc() {
     // curStyle := win.UINT(win.GetWindowLongW(winH, win.GWL_EXSTYLE))
     // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_LAYERED))
     // win.SetLayeredWindowAttributes(winH, win.RGB(0, 0, 0), 0, 1)
+
 
     // Just in case preinit particles to -999, -999
     for &p, _ in ctx.snowParticles {
@@ -170,6 +181,10 @@ game_update :: proc() -> bool {
 
         particlesOnTheScreen += 1
     }
+
+    rl.DrawRectangle(ctx.window.width/2, ctx.window.height/2, 20, 20, rl.DARKBLUE)
+    set_mouse_passthrough(!rl.IsWindowFocused())
+
     when !IS_RELEASE {
         debug_text("particlesOnTheScreen", particlesOnTheScreen)
         // Test out perlin noise values manually
@@ -215,7 +230,7 @@ create_new_snowparticle :: proc() {
         p.pos.y = 0
     
         p.radius = rand.float32_range(8, P_RADIUS_MAX)
-        rg := u8(rand.float32_range(170, 255))
+        rg := u8(rand.float32_range(170, 230))
         p.color.r = rg
         p.color.g = rg
         p.color.b = 255
@@ -226,6 +241,16 @@ create_new_snowparticle :: proc() {
             p.texIndex = u8(rand.float32_range(0, f32(len(ctx.textures))))
         }
         break
+    }
+}
+
+set_mouse_passthrough :: proc(enable: bool) {
+    if enable {
+        ctx.window.configFlags += {.WINDOW_MOUSE_PASSTHROUGH}
+        rl.SetWindowState({.WINDOW_MOUSE_PASSTHROUGH})
+    } else {
+        ctx.window.configFlags -= {.WINDOW_MOUSE_PASSTHROUGH}
+        rl.ClearWindowState({.WINDOW_MOUSE_PASSTHROUGH})
     }
 }
 
