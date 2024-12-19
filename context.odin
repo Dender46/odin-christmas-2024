@@ -26,7 +26,7 @@ Context :: struct {
     window                  : Window,
     textures                : [dynamic]rl.Texture2D,
     models                  : [dynamic]rl.Model,
-    snowParticles           : [300]SnowParticle,
+    snowParticles           : [2048]SnowParticle,
 
     newSnowParticleTimer    : f32,
 

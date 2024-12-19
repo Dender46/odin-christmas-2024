@@ -25,21 +25,25 @@ when ODIN_OS == .Windows {
 
 IS_RELEASE :: #config(IS_RELEASE, false)
 
-EMPTY_POS                   :: [2]f32{-999, -999}
-PERLIN_IMAGE_SCALE          :: 10
-WINDOW_PADDING              :: 10
+EMPTY_POS           :: [2]f32{-999, -999}
+PERLIN_IMAGE_SCALE  :: 1
+WINDOW_PADDING      :: 10
+P_RADIUS_MAX        :: 20
 
-P_GRAV_SPEED                :: 100
-P_WIND_SPEED                :: 0.5
+P_GRAV_SPEED: f32 = 100
+P_WIND_SPEED: f32 = 0.5
 
-P_RADIUS_SCALE              :: 0.25
-P_TEXTURES_SCALE            :: 0.025
-P_RADIUS_MAX                :: 20
-P_COLOR_ALPHA_SCALE         :: 0.7
+P_RADIUS_SCALE: f32 = 0.25
+P_TEXTURES_SCALE: f32 = 0.025
+P_COLOR_ALPHA_SCALE: f32 = 0.85
+P_SPAWN_FREQUENCY: f32 = 1.0
 
 // Variables that don't change, and that should be updated on hot reloaded
 // Be careful
 update_statics :: proc() {
+    bin.GuiLoadStyleBluish()
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SIZE), 30)
+    rl.GuiSetStyle(.DEFAULT, i32(rl.GuiDefaultProperty.TEXT_SPACING), 2)
     when ODIN_OS == .Windows {
         // screenArea: win.RECT
         // win.SystemParametersInfoW(win.SPI_GETWORKAREA, 0, &screenArea, 0)
@@ -97,20 +101,18 @@ game_init :: proc() {
     // win.SetWindowLongW(winH, win.GWL_EXSTYLE, win.LONG(curStyle | win.WS_EX_LAYERED))
     // win.SetLayeredWindowAttributes(winH, win.RGB(0, 0, 0), 0, 1)
 
-
     // Just in case preinit particles to -999, -999
     for &p, _ in ctx.snowParticles {
         p.pos = EMPTY_POS
     }
 
+    update_statics()
     window_resize()
     context_init()
 }
 
 @(export)
 game_update :: proc() -> bool {
-    update_statics()
-    // update window size values outside of update_statics() to avoid issues
     ctx.window.width = rl.GetScreenWidth()
     ctx.window.height = rl.GetScreenHeight()
 
@@ -122,7 +124,7 @@ game_update :: proc() -> bool {
     // rl.UnloadTexture(ctx.perlinTex)
     // ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
 
-    ctx.newSnowParticleTimer -= dt
+    ctx.newSnowParticleTimer -= dt * P_SPAWN_FREQUENCY
     // debug_text("New particle in: ", ctx.newSnowParticleTimer)
     @(static) one := false
     if ctx.newSnowParticleTimer <= 0 {
@@ -156,7 +158,6 @@ game_update :: proc() -> bool {
             continue
         }
 
-
         renderColor := p.color
         // smoothstep for some nice fade out at the end
         smoothstepOfPosY := 1 - math.smoothstep(f32(0.75), f32(1.05), p.pos.y / f32(ctx.window.height))
@@ -182,8 +183,16 @@ game_update :: proc() -> bool {
         particlesOnTheScreen += 1
     }
 
-    rl.DrawRectangle(ctx.window.width/2, ctx.window.height/2, 20, 20, rl.DARKBLUE)
-    set_mouse_passthrough(!rl.IsWindowFocused())
+    closeWindow: bool
+    if rl.IsWindowFocused() {
+        set_mouse_passthrough(false)
+        // TODO: figure out disfocus. Maybe enable mouse passthrough, and after 5 sec disable it
+        disfocusApp, quitApp := render_ui()
+        closeWindow = quitApp
+    } else {
+        set_mouse_passthrough(true)
+    }
+
 
     when !IS_RELEASE {
         debug_text("particlesOnTheScreen", particlesOnTheScreen)
@@ -217,7 +226,7 @@ game_update :: proc() -> bool {
     debug_reset_text_state()
     free_all(context.temp_allocator)
 
-    return !rl.WindowShouldClose()
+    return !(rl.WindowShouldClose() || closeWindow)
 }
 
 create_new_snowparticle :: proc() {
@@ -242,6 +251,48 @@ create_new_snowparticle :: proc() {
         }
         break
     }
+}
+
+render_ui :: proc() -> (disfocusApp, quitApp: bool) {
+    // TODO:
+    // Gui controls
+    //   [   ] fps
+    //    [x]  fade at the bottom
+    container := rl.Rectangle{0, 0, 500, 430}
+    container.x = (f32(ctx.window.width) - container.width) * 0.5
+    container.y = (f32(ctx.window.height) - container.height) * 0.5
+
+    {// background
+        using container
+        bgColor := rl.GetColor(0xE5EEF1ff)
+        bgColor = rl.ColorAlpha(bgColor, 0.95)
+        rl.DrawRectangleRounded(container, 0.02, 6, bgColor)
+        rl.DrawRectangleRoundedLinesEx(container, 0.02, 6, 12, rl.GetColor(0x5ca6a6ff))
+    }
+
+    pad: f32 = 30
+    elHeight: f32 = 30
+    x := container.x + pad
+    y := container.y + pad
+    elWidth := container.width / 2 - pad
+    rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Falling speed", &P_GRAV_SPEED, 30, 300)
+    y += elHeight + pad
+    rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Pattern speed", &P_WIND_SPEED, 0.0, 0.5)
+    
+    y += elHeight + pad + pad
+    rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Frequency", &P_SPAWN_FREQUENCY, 0.01, 10.0)
+    y += elHeight + pad
+    rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Opacity", &P_COLOR_ALPHA_SCALE, 0.0, 1.0)
+    y += elHeight + pad
+    rl.GuiSlider({x, y, elWidth, elHeight }, "", "     Size", &P_RADIUS_SCALE, 0.1, 0.5)
+    P_TEXTURES_SCALE = P_RADIUS_SCALE * 0.1
+
+    y += elHeight + pad + 5
+    quitButton := rl.Rectangle{0, 0, elWidth, elHeight}
+    quitButton.x = container.x + (container.width - quitButton.width) / 2
+    quitButton.y = y
+    quitApp = rl.GuiButton(quitButton, "Quit!")
+    return
 }
 
 set_mouse_passthrough :: proc(enable: bool) {
