@@ -16,7 +16,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build-linux:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -36,7 +36,37 @@ jobs:
           llvm-version: 14 # default is 14
           # Type of Odin build, supports "debug", "release" or "release_native"
           build-type: release
-      # - name: Build Windows
-        # run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
-      - name: Build Linux
+      - name: Build application
         run: odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
+      - name: Upload a Build Artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnowScreenGift
+          path: ./'Snow Screen Gift.exe'
+  build-windows:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      # You may pin to the exact commit or the version.
+      # uses: laytan/setup-odin@7bf98534c6f9e15b410236974cbc288ba24b68a8
+      - uses: laytan/setup-odin@v2.8.0
+        with:
+          # GitHub token to make requests from, must be set to download releases
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # The Odin release to setup, if set, this will try to download a tagged GitHub release with this name instead of pulling/compiling, `latest` can be used to setup the latest release
+          release: false
+          # Which version of LLVM to install, supports 11, 12, 13 and 14, this option has no effect on Windows (14 is recommended as this is pre-installed by GitHub)
+          llvm-version: 14 # default is 14
+          # Type of Odin build, supports "debug", "release" or "release_native"
+          build-type: release
+      - name: Build application
+        run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
+      - name: Upload a Build Artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SnowScreenGift
+          path: ./'Snow Screen Gift.exe'
