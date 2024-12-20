@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: SnowScreenGift
-          path: ./'Snow Screen Gift'
+          path: 'Snow Screen Gift'
   build-windows:
     # The type of runner that the job will run on
     runs-on: windows-latest
@@ -70,4 +70,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: SnowScreenGift
-          path: ./'Snow Screen Gift.exe'
+          path: 'Snow Screen Gift.exe'
