@@ -1,0 +1,43 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+      # You may pin to the exact commit or the version.
+      # uses: laytan/setup-odin@7bf98534c6f9e15b410236974cbc288ba24b68a8
+      - uses: laytan/setup-odin@v2.8.0
+        with:
+          # GitHub token to make requests from, must be set to download releases
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          # The Odin release to setup, if set, this will try to download a tagged GitHub release with this name instead of pulling/compiling, `latest` can be used to setup the latest release
+          release: false
+          # Which version of LLVM to install, supports 11, 12, 13 and 14, this option has no effect on Windows (14 is recommended as this is pre-installed by GitHub)
+          llvm-version: 14 # default is 14
+          # Type of Odin build, supports "debug", "release" or "release_native"
+          build-type: release
+      - name: Build Windows
+        run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
+      - name: Build Linux
+        run: odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
