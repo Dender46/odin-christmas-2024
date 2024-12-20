@@ -37,13 +37,10 @@ jobs:
           # Type of Odin build, supports "debug", "release" or "release_native"
           build-type: release
       - name: Build application
-        run: |
-          odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
-          ls
-          pwd
+        run: odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
       - uses: actions/upload-artifact@v4
         with:
-          name: SnowScreenGift
+          name: SnowScreenGift-linux
           path: 'Snow Screen Gift'
   build-windows:
     # The type of runner that the job will run on
@@ -69,5 +66,5 @@ jobs:
         run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
       - uses: actions/upload-artifact@v4
         with:
-          name: SnowScreenGift
+          name: SnowScreenGift-win
           path: 'Snow Screen Gift.exe'
