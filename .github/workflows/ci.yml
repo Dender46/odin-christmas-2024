@@ -36,7 +36,7 @@ jobs:
           llvm-version: 14 # default is 14
           # Type of Odin build, supports "debug", "release" or "release_native"
           build-type: release
-      - name: Build Windows
-        run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
+      # - name: Build Windows
+        # run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
       - name: Build Linux
         run: odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
