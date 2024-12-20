@@ -38,11 +38,10 @@ jobs:
           build-type: release
       - name: Build application
         run: odin build . -out:'Snow Screen Gift' -define:IS_RELEASE=true -o:speed
-      - name: Upload a Build Artifact
       - uses: actions/upload-artifact@v4
         with:
           name: SnowScreenGift
-          path: ./'Snow Screen Gift.exe'
+          path: ./'Snow Screen Gift'
   build-windows:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -65,7 +64,6 @@ jobs:
           build-type: release
       - name: Build application
         run: odin build . -out:'Snow Screen Gift.exe' -define:IS_RELEASE=true -o:speed -resource:resources.rc -subsystem:windows
-      - name: Upload a Build Artifact
       - uses: actions/upload-artifact@v4
         with:
           name: SnowScreenGift
