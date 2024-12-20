@@ -9,19 +9,7 @@ import "core:math"
 import "core:slice"
 import "core:math/rand"
 import rl "vendor:raylib"
-import win "core:sys/windows"
 import bin "resources"
-
-
-when ODIN_OS == .Windows {
-    foreign import user32 "system:User32.lib"
-
-    @(default_calling_convention="system")
-    foreign user32 {
-        // For some reason not implemented in Odin :(
-        GetLayeredWindowAttributes :: proc(hWnd: win.HWND, crKey: ^win.COLORREF, bAlpha: ^win.BYTE, pdwFlags: ^win.DWORD) -> win.BOOL ---
-    }
-}
 
 IS_RELEASE :: #config(IS_RELEASE, false)
 
@@ -119,16 +107,9 @@ game_update :: proc() -> bool {
     dt := rl.GetFrameTime()
     windowRect := rl.Rectangle{0, 0, f32(ctx.window.width), f32(ctx.window.height)}
 
-    // rl.UnloadImage(ctx.perlinImg)
-    // ctx.perlinImg = rl.GenImagePerlinNoise(ctx.window.width / PERLIN_IMAGE_SCALE, ctx.window.height / PERLIN_IMAGE_SCALE, i32(rl.GetTime()*5), 0, 10.0)
-    // rl.UnloadTexture(ctx.perlinTex)
-    // ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
-
     ctx.newSnowParticleTimer -= dt * P_SPAWN_FREQUENCY
     // debug_text("New particle in: ", ctx.newSnowParticleTimer)
-    @(static) one := false
     if ctx.newSnowParticleTimer <= 0 {
-        one = true
         create_new_snowparticle()
         ctx.newSnowParticleTimer = rand.float32_range(0.05, 0.2)
     }
@@ -370,12 +351,16 @@ context_free_memory :: proc() {
         }
     }
     rl.UnloadImage(ctx.perlinImg)
-    rl.UnloadTexture(ctx.perlinTex)
+    when !IS_RELEASE {
+        rl.UnloadTexture(ctx.perlinTex)
+    }
 }
 
 context_init :: proc() {
     ctx.perlinImg = rl.GenImagePerlinNoise(ctx.window.width / PERLIN_IMAGE_SCALE, ctx.window.height / PERLIN_IMAGE_SCALE, 0, 0, 10.0)
-    ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
+    when !IS_RELEASE {
+        ctx.perlinTex = rl.LoadTextureFromImage(ctx.perlinImg)
+    }
     img := rl.Image {
         data = rawptr(&bin.SNOWFLAKE_A_DATA),
         width = bin.SNOWFLAKE_A_WIDTH,
